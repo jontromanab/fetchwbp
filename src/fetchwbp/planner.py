@@ -1,6 +1,8 @@
 import numpy as np
 import time
 from openravepy import *
+from prpy.rave import save_trajectory 
+
 
 
 class MJWBPlanner:
@@ -14,6 +16,24 @@ class MJWBPlanner:
 	"""Returns velocity given start,end pose and time"""
 	def getVel(start_pose, end_pose, unitTime = 1.0):
 		return (end_pose-start_pose)/unitTime
+
+	def discretizePath(self,poses, resolution):
+		waypoints = []
+		for i in range(len(poses)-1):
+			mid_waypoints = createWayPoints(poses[i], poses[i+1], int(resolution/(len(poses)-1)))
+			for j in mid_waypoints:
+				waypoints.append(j)
+		return waypoints
+
+	def createWayPoints(self,start_pose, end_pose, resolution):
+		poses=[]
+		int_pose = (start_pose - end_pose)/resolution
+		first_pose = start_pose
+		poses.append(first_pose)
+		for i in range(resolution-1):
+			first_pose = first_pose - int_pose
+			poses.append(first_pose)
+		return poses
 	
 
 		
@@ -145,6 +165,58 @@ class MJWBPlanner:
 			pl.plotPoint(transformToPose(Tee_gripper), 0.01, blue)
 		waitrobot(robot)
 		return transformToPose(Tee), transformToPose(TeeBase), arm_vel, finalgoal
+
+	def executePath(self,robot, path, resolution, handles):
+		#manip = robot.SetActiveManipulator('arm_torso')
+		print 'path: '+str(len(path))
+		dis_poses = self.discretizePath(path, resolution)
+		print 'dis_poses: '+str(len(dis_poses))
+		poses = []
+		base_poses = []
+		all_poses = []
+		all_poses.append(dis_poses)
+		jointnames=['torso_lift_joint','shoulder_pan_joint','shoulder_lift_joint','upperarm_roll_joint','elbow_flex_joint','forearm_roll_joint','wrist_flex_joint','wrist_roll_joint']
+		robot.SetActiveDOFs([robot.GetJoint(name).GetDOFIndex() for name in jointnames],DOFAffine.X|DOFAffine.Y|DOFAffine.RotationAxis)
+		cspec = robot.GetActiveConfigurationSpecification('linear')
+		traj = openravepy.RaveCreateTrajectory(env, '')
+		cspec.AddGroup('joint_velocities', dof= 8, interpolation='quadratic')
+		cspec.AddGroup('affine_velocities', dof= 4, interpolation='next')
+		cspec.AddDeltaTimeGroup()
+		traj.Init(cspec)
+		#Creating the first point of the trajectory (the current joint values of the robot)
+		arm_curr = robot.GetDOFValues(manip.GetArmIndices())
+		base_curr = np.zeros(3)
+		base_vel = np.zeros(4)
+		arm_vel_cuur = np.zeros(8)
+		dt = 0.
+		value = []
+		value.extend(arm_curr)
+		value.extend(base_curr)
+		value.extend(arm_vel_cuur)
+		value.extend(base_vel)
+		value.extend([dt])
+		traj.Insert(0, value)
+		curr_time = round(time.time() * 1000)
+
+		for i in range(len(dis_poses)-1):
+			pose, base_pose, arm_vel, finalgoal = executeVelPath(robot, dis_poses[i+1], handles, unitTime = 1.0)
+			# now creating other waypoints of the trajectory
+			value = []
+			value.extend(finalgoal[ :8])
+			value.extend(finalgoal[-3: ])
+			value.extend(arm_vel)
+			value.extend(np.zeros(3))
+			time_now = round(time.time() * 1000)
+			dt = time_now - curr_time
+			value.extend([dt/5000.])
+			value.extend([dt/5000.])
+			traj.Insert(i+1, value)
+			poses.append(pose)
+			base_poses.append(base_pose)
+			save_trajectory(traj,'/home/abhi/Desktop/traj2/whole_body_new_zigzag_timed_traj.xml')
+			all_poses.append(poses) 
+			all_poses.append(base_poses) 
+		return all_poses
 
 
 

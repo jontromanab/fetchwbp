@@ -20,3 +20,8 @@ def poseToTransform(pose):
 	trns = matrixFromAxisAngle(angles)
 	trns[0:3, 3] = pose[0:3]
 	return trns
+
+def getTransformBetweenLinks(robot,link1, link2):
+    trns1 = robot.GetLinkTransformations()[robot.GetLink(link1).GetIndex()]
+    trns2 = robot.GetLinkTransformations()[robot.GetLink(link2).GetIndex()]
+    return np.dot(np.linalg.inv(trns2),trns1) 
