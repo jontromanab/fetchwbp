@@ -43,7 +43,7 @@ if __name__ == '__main__':
 		new_poses.append(util.transformToPose(new_trns))
 
 	#send EE pattern point to the planner
-	planner = MJWBPlanner(robot)
+	planner = MJWBPlanner(robot, handles)
 	all_poses = planner.executePath(new_poses, 500, handles)
 
 

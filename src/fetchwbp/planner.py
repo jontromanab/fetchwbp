@@ -3,16 +3,23 @@ import time
 from openravepy import *
 from prpy.rave import save_trajectory 
 import util
+from plotting import plottingPoints
 
 
 
 class MJWBPlanner:
 	"""Whole body planner by merged jacobian. Returns a whole body trajectory 
 	that can be direcly executed in Fetchpy"""
-	def __init__(self, robot):
+	def __init__(self, robot, handles):
 		self.robot = robot
 		self.manip = self.robot.SetActiveManipulator('arm_torso')
 		self.basemanip = interfaces.BaseManipulation(self.robot)
+		self.pl_ = plottingPoints(robot.GetEnv(),handles)
+
+
+	def waitrobot(self):
+		while not self.robot.GetController().IsDone():
+			time.sleep(0.05)
 
 	"""Returns velocity given start,end pose and time"""
 	def getVel(self,start_pose, end_pose, unitTime = 1.0):
@@ -55,7 +62,7 @@ class MJWBPlanner:
 
 
 	"""Calculates Jacobian of the arm"""
-	def calculateJacobianArm(robot):
+	def calculateJacobianArm(self):
 		#manip = robot.GetActiveManipulator()
 		jacob_spatial = self.manip.CalculateJacobian()
 		jacob_angular = self.manip.CalculateAngularVelocityJacobian()
@@ -63,28 +70,28 @@ class MJWBPlanner:
 		return jacob 
 
 	"""Calculates Jacobian of the base"""
-	def calculateJacobianBase(robot):
+	def calculateJacobianBase(self):
 		l = 0.37476
 		r = 0.0225
 		jacob_base = np.array(([r/2, r/2],[0,0],[0,0],[0,0],[0,0],[-r/l,r/l]))
 		return jacob_base
 
 	""" Returns full jacobian of arm and base combined"""
-	def calculateFullJacobian(robot):
-		jacob_arm = self.calculateJacobianArm(robot)
-		jacob_base = self.calculateJacobianBase(robot)
+	def calculateFullJacobian(self):
+		jacob_arm = self.calculateJacobianArm()
+		jacob_base = self.calculateJacobianBase()
 		full_jacob = numpy.hstack((jacob_arm, jacob_base))
 		return full_jacob
 
 	"""Checks if velocity is within limit"""
-	def isInLimit(vel, bounds):
+	def isInLimit(self, vel, bounds):
 		for i in range(len(vel)):
 			if(vel[i]>=bounds[i][1] or vel[i]<=bounds[i][0]):
 				return False
 
 	"""Returns cartesian position given current affine displacement"""
-	def calculateBaseGoalCart(q_dot_base):
-		jacob_base = self.calculateJacobianBase(robot)
+	def calculateBaseGoalCart(self, q_dot_base):
+		jacob_base = self.calculateJacobianBase()
 		cart_vel = numpy.dot(jacob_base, q_dot_base)
 		TeeBase = self.robot.GetTransform()
 		trns = matrixFromAxisAngle([0,0,cart_vel[-1]])
@@ -102,16 +109,16 @@ class MJWBPlanner:
 		joint_limit_tolerance=3e-2
 		manip = self.robot.GetActiveManipulator()
 		vel = self.getVel(util.transformToPose(self.manip.GetEndEffectorTransform()), pose, unitTime)
-		full_jacob = calculateFullJacobian(robot)
+		full_jacob = self.calculateFullJacobian()
 		jacob_inv = np.linalg.pinv(full_jacob)
 		q_dot = numpy.dot(jacob_inv, vel)
 		if joint_velocity_limits is None:
-			joint_velocity_limits = robot.GetActiveDOFMaxVel()
+			joint_velocity_limits = self.robot.GetActiveDOFMaxVel()
 		elif joint_velocity_limits:
-			joint_velocity_limits = numpy.array([numpy.PINF] * robot.GetActiveDOF())
+			joint_velocity_limits = numpy.array([numpy.PINF] * self.robot.GetActiveDOF())
 		bounds = numpy.column_stack((-joint_velocity_limits, joint_velocity_limits))
-		q_curr = robot.GetActiveDOFValues()
-		q_min, q_max = robot.GetActiveDOFLimits()
+		q_curr = self.robot.GetActiveDOFValues()
+		q_min, q_max = self.robot.GetActiveDOFLimits()
 		dq_bounds = [(0., max) if q_curr[i] <= q_min[i] + joint_limit_tolerance else
 		(min, 0.) if q_curr[i] >= q_max[i] - joint_limit_tolerance else
 		(min, max) for i, (min, max) in enumerate(bounds)]
@@ -119,7 +126,7 @@ class MJWBPlanner:
 		curr_values = manip.GetArmDOFValues()
 		changed_values = curr_values + q_dot_arm * 1.0
 		value = 0
-		while(isInLimit(changed_values,dq_bounds) == False):
+		while(self.isInLimit(changed_values,dq_bounds) == False):
 			value = value+1
 			for i in range(len(q_dot_arm)):
 				if(changed_values[i]>=dq_bounds[i][1]-joint_limit_tolerance or changed_values[i]<=dq_bounds[i][0]+joint_limit_tolerance):
@@ -140,7 +147,7 @@ class MJWBPlanner:
 		q_dot_base = q_dot[-2:]
 		curr_values = self.manip.GetArmDOFValues()
 		changed_values = curr_values + q_dot_arm * unitTime
-		cart_vel = calculateBaseGoalCart(q_dot_base)
+		cart_vel = self.calculateBaseGoalCart(q_dot_base)
 		finalgoal = numpy.hstack((changed_values, cart_vel))
 		return q_dot_arm, finalgoal
 
@@ -160,12 +167,15 @@ class MJWBPlanner:
 			self.robot.SetAffineRotationAxisMaxVels(np.ones(4))
 
 			arm_vel, finalgoal = self.getGoalToExecute(pose, unitTime)
-			basemanip.MoveActiveJoints(goal=finalgoal,maxiter=5000,steplength=1,maxtries=2)
+			self.basemanip.MoveActiveJoints(goal=finalgoal,maxiter=5000,steplength=1,maxtries=2)
 
-			pl.plotPoint(transformToPose(TeeBase), 0.01, yellow)
-			pl.plotPoint(transformToPose(Tee_gripper), 0.01, blue)
-		waitrobot(robot)
-		return transformToPose(Tee), transformToPose(TeeBase), arm_vel, finalgoal
+
+
+
+			self.pl_.plotPoint(util.transformToPose(TeeBase), 0.01, color = 'yellow')
+			self.pl_.plotPoint(util.transformToPose(Tee_gripper), 0.01, color = 'blue')
+		self.waitrobot()
+		return util.transformToPose(Tee), util.transformToPose(TeeBase), arm_vel, finalgoal
 
 	def executePath(self, path, resolution, handles):
 		#manip = robot.SetActiveManipulator('arm_torso')
