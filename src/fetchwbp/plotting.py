@@ -13,8 +13,9 @@ class plottingPoints:
 
 	def plotPoint(self, pose, size, color):
 		point = np.array((pose[0:3]))
-		self.handles.append(self.env.plot3(points = point, pointsize = size,colors = np.array((color)), drawstyle = 1))
+		self.handles.append(self.env.plot3(points = point, pointsize = size,colors = np.asarray(dict[color]), drawstyle = 1))
 
 	def plotPoints(self, poses, size, color = 'red'):
 		for i in poses:
-			self.plotPoint(i, size, dict[color])
+			point = np.array((i[0:3]))
+			self.handles.append(self.env.plot3(points = point, pointsize = size,colors = np.asarray(dict[color]), drawstyle = 1))
