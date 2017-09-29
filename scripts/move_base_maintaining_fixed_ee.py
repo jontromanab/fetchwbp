@@ -37,7 +37,7 @@ if __name__ == '__main__':
 	jointnames=['torso_lift_joint','shoulder_pan_joint','shoulder_lift_joint','upperarm_roll_joint','elbow_flex_joint','forearm_roll_joint','wrist_flex_joint','wrist_roll_joint']
 	#robot.SetActiveDOFs([robot.GetJoint(name).GetDOFIndex() for name in jointnames])
 	robot.SetActiveDOFs([robot.GetJoint(name).GetDOFIndex() for name in jointnames],DOFAffine.X|DOFAffine.Y|DOFAffine.RotationAxis)
-
+	arm_curr = robot.GetDOFValues(manip.GetArmIndices())
 	#robot.base.Forward(0.1, execute = True)
 	#sol = manip.FindIKSolution(Tee, IkFilterOptions.CheckEnvCollisions)
 	while(keep_going):
@@ -48,17 +48,21 @@ if __name__ == '__main__':
 		first_sol_base = [0.1, 0, 0]
 		first_sol.extend(first_sol_base)
 		basemanip.MoveActiveJoints(goal=first_sol,maxiter=5000,steplength=10,maxtries=2)
+		#print robot.GetDOFVelocities(manip.GetArmIndices())
 		#robot.base.Forward(0.1, execute = True)
 		waitrobot(robot)
 		#print sol
 		#robot.arm.PlanToEndEffectorPose(Tee,execute = True)
 
-		print 'going back 1st'
+		print 'going back center'
 		#raw_input("Press enter to continue...")
-		second_sol = [ 2.16293471e-04, 7.04974705e-01,-8.12747977e-01, 4.40843940e-01,1.52903305e+00, -3.80069727e-01, 9.23528643e-01, 8.29270090e-01]
-		second_sol_base = [0, 0, 0]
-		second_sol.extend(second_sol_base)
-		basemanip.MoveActiveJoints(goal=second_sol,maxiter=5000,steplength=10,maxtries=2)
+		#second_sol = [ 2.16293471e-04, 7.04974705e-01,-8.12747977e-01, 4.40843940e-01,1.52903305e+00, -3.80069727e-01, 9.23528643e-01, 8.29270090e-01]
+		center_sol = []
+		center_sol.extend(arm_curr)
+		center_sol_base = [0, 0, 0]
+		center_sol.extend(center_sol_base)
+		basemanip.MoveActiveJoints(goal=center_sol,maxiter=5000,steplength=10,maxtries=2)
+		#print robot.GetDOFVelocities(manip.GetArmIndices())
 		#robot.base.Forward(-0.1, execute = True)
 		waitrobot(robot)
 		
@@ -72,7 +76,9 @@ if __name__ == '__main__':
 		third_sol = [ 0.14338345, 0.61748536, -0.39198779, 0.44084394, 1.22903305, -0.55902202, 0.83521167, 0.74906054]
 		third_sol_base = [-0.1, 0, 0]
 		third_sol.extend(third_sol_base)
+		
 		basemanip.MoveActiveJoints(goal=third_sol,maxiter=5000,steplength=10,maxtries=2)
+		#print robot.GetDOFVelocities(manip.GetArmIndices())
 		#robot.base.Forward(-0.1, execute = True)
 		waitrobot(robot)
 		#print sol
@@ -81,11 +87,46 @@ if __name__ == '__main__':
 	
 		#robot.base.Forward(0.1, execute = True)
 		#sol = manip.FindIKSolution(Tee, IkFilterOptions.CheckEnvCollisions)
-		print 'going forward agian'
+		print 'going back center'
 		#raw_input("Press enter to continue...")
-		forth_sol = [ 2.16293471e-04, 7.04974705e-01,-8.12747977e-01, 4.40843940e-01,1.52903305e+00, -3.80069727e-01, 9.23528643e-01, 8.29270090e-01]
-		forth_sol_base = [0, 0, 0]
-		forth_sol.extend(forth_sol_base)
-		basemanip.MoveActiveJoints(goal=forth_sol,maxiter=5000,steplength=10,maxtries=2)
+		#forth_sol = [ 2.16293471e-04, 7.04974705e-01,-8.12747977e-01, 4.40843940e-01,1.52903305e+00, -3.80069727e-01, 9.23528643e-01, 8.29270090e-01]
+		basemanip.MoveActiveJoints(goal=center_sol,maxiter=5000,steplength=10,maxtries=2)
 		waitrobot(robot)
+
+
+		print 'Rotating now +0.5'
+		fifth_sol = [0.1833299, 0.17957563, -0.41729582, 0.44084394,1.52903305, -0.74254459,0.61490822,  1.06765718]
+		fifth_sol_base = [0, 0, 0.5]
+		fifth_sol.extend(fifth_sol_base)
+		basemanip.MoveActiveJoints(goal=fifth_sol,maxiter=5000,steplength=10,maxtries=2)
+		#print robot.GetDOFVelocities(manip.GetArmIndices())
+		waitrobot(robot)
+		#robot.base.Rotate(0.5, execute = True)
+		#sol = manip.FindIKSolution(Tee, IkFilterOptions.CheckEnvCollisions)
+		#print sol
+
+		print 'going back center'
+		#raw_input("Press enter to continue...")
+		#sixth_sol = [ 2.16293471e-04, 7.04974705e-01,-8.12747977e-01, 4.40843940e-01,1.52903305e+00, -3.80069727e-01, 9.23528643e-01, 8.29270090e-01]
+		basemanip.MoveActiveJoints(goal=center_sol,maxiter=5000,steplength=10,maxtries=2)
+		waitrobot(robot)
+
+
+		print 'Rotating now -0.5'
+		#robot.base.Rotate(-0.5, execute = True)
+		#sol = manip.FindIKSolution(Tee, IkFilterOptions.CheckEnvCollisions)
+		seventh_sol = [0.17738291,1.22278736, -0.39754901, 0.44084394,1.42903305,-0.67994824,0.67709178,  1.02158291]
+		seventh_sol_base = [0, 0, -0.5]
+		seventh_sol.extend(seventh_sol_base)
+		basemanip.MoveActiveJoints(goal=seventh_sol,maxiter=5000,steplength=10,maxtries=2)
+		#print robot.GetDOFVelocities(manip.GetArmIndices())
+		waitrobot(robot)
+		#print sol
+
+		print 'going back center'
+		#raw_input("Press enter to continue...")
+		#sixth_sol = [ 2.16293471e-04, 7.04974705e-01,-8.12747977e-01, 4.40843940e-01,1.52903305e+00, -3.80069727e-01, 9.23528643e-01, 8.29270090e-01]
+		basemanip.MoveActiveJoints(goal=center_sol,maxiter=5000,steplength=10,maxtries=2)
+		waitrobot(robot)
+		
 		
