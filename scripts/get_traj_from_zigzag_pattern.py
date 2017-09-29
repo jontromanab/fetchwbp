@@ -44,7 +44,7 @@ if __name__ == '__main__':
 
 	#send EE pattern point to the planner
 	planner = MJWBPlanner(robot)
-	all_poses = planner.executePath(robot, new_poses, 500, handles)
+	all_poses = planner.executePath(new_poses, 500, handles)
 
 
 	print 'I am OK'

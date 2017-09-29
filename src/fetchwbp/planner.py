@@ -2,6 +2,7 @@ import numpy as np
 import time
 from openravepy import *
 from prpy.rave import save_trajectory 
+import util
 
 
 
@@ -14,13 +15,13 @@ class MJWBPlanner:
 		self.basemanip = interfaces.BaseManipulation(self.robot)
 
 	"""Returns velocity given start,end pose and time"""
-	def getVel(start_pose, end_pose, unitTime = 1.0):
+	def getVel(self,start_pose, end_pose, unitTime = 1.0):
 		return (end_pose-start_pose)/unitTime
 
-	def discretizePath(self,poses, resolution):
+	def discretizePath(self, poses, resolution):
 		waypoints = []
 		for i in range(len(poses)-1):
-			mid_waypoints = createWayPoints(poses[i], poses[i+1], int(resolution/(len(poses)-1)))
+			mid_waypoints = self.createWayPoints(poses[i], poses[i+1], int(resolution/(len(poses)-1)))
 			for j in mid_waypoints:
 				waypoints.append(j)
 		return waypoints
@@ -97,10 +98,10 @@ class MJWBPlanner:
 	
 	"""Returns filted joint velocity, for every step it checks for all the values of velocity
 	and if gets more than the limit, it sets value to that row in jacobian and recalculates again"""
-	def getQDot(robot, pose, unitTime, joint_velocity_limits=None):
+	def getQDot(self, pose, unitTime, joint_velocity_limits=None):
 		joint_limit_tolerance=3e-2
-		manip = robot.GetActiveManipulator()
-		vel = getVel(transformToPose(manip.GetEndEffectorTransform()), pose, unitTime)
+		manip = self.robot.GetActiveManipulator()
+		vel = self.getVel(util.transformToPose(self.manip.GetEndEffectorTransform()), pose, unitTime)
 		full_jacob = calculateFullJacobian(robot)
 		jacob_inv = np.linalg.pinv(full_jacob)
 		q_dot = numpy.dot(jacob_inv, vel)
@@ -132,9 +133,9 @@ class MJWBPlanner:
 
 
 	""" Obtain the next joint vales(arm) and affine values(base) to execute"""
-	def getGoalToExecute(robot, pose, unitTime):
+	def getGoalToExecute(self, pose, unitTime):
 		#manip = robot.GetActiveManipulator()
-		q_dot = getQDot(robot, pose, unitTime,joint_velocity_limits=numpy.PINF)
+		q_dot = self.getQDot(pose, unitTime,joint_velocity_limits=numpy.PINF)
 		q_dot_arm = q_dot[:-2]*0.25
 		q_dot_base = q_dot[-2:]
 		curr_values = self.manip.GetArmDOFValues()
@@ -146,19 +147,19 @@ class MJWBPlanner:
 	"""Execution. This function is called on every iteration
 	On each step, it calculates the joint, affine values from the jacobian and moves the robot
 	to the next point"""
-	def executeVelPath(robot, pose, handles, unitTime = 1.0,joint_velocity_limits=None):
-		manip = robot.SetActiveManipulator('arm_torso')
-		basemanip = interfaces.BaseManipulation(robot)
-		with robot:
-			Tee = manip.GetEndEffectorTransform()
-			TeeBase = robot.GetTransform()
-			Tee_gripper = getTransform('gripper_link')
+	def executeVelPath(self, pose, handles, unitTime = 1.0,joint_velocity_limits=None):
+		#self.manip = self.robot.SetActiveManipulator('arm_torso')
+		#basemanip = interfaces.BaseManipulation(robot)
+		with self.robot:
+			Tee = self.manip.GetEndEffectorTransform()
+			TeeBase = self.robot.GetTransform()
+			Tee_gripper = util.getTransform(self.robot, 'gripper_link')
 			jointnames=['torso_lift_joint','shoulder_pan_joint','shoulder_lift_joint','upperarm_roll_joint','elbow_flex_joint','forearm_roll_joint','wrist_flex_joint','wrist_roll_joint']
-			robot.SetActiveDOFs([robot.GetJoint(name).GetDOFIndex() for name in jointnames],DOFAffine.X|DOFAffine.Y|DOFAffine.RotationAxis)
-			robot.SetAffineTranslationMaxVels([0.5,0.5,0.5])
-			robot.SetAffineRotationAxisMaxVels(np.ones(4))
+			self.robot.SetActiveDOFs([self.robot.GetJoint(name).GetDOFIndex() for name in jointnames],DOFAffine.X|DOFAffine.Y|DOFAffine.RotationAxis)
+			self.robot.SetAffineTranslationMaxVels([0.5,0.5,0.5])
+			self.robot.SetAffineRotationAxisMaxVels(np.ones(4))
 
-			arm_vel, finalgoal = getGoalToExecute(robot, pose, unitTime)
+			arm_vel, finalgoal = self.getGoalToExecute(pose, unitTime)
 			basemanip.MoveActiveJoints(goal=finalgoal,maxiter=5000,steplength=1,maxtries=2)
 
 			pl.plotPoint(transformToPose(TeeBase), 0.01, yellow)
@@ -166,7 +167,7 @@ class MJWBPlanner:
 		waitrobot(robot)
 		return transformToPose(Tee), transformToPose(TeeBase), arm_vel, finalgoal
 
-	def executePath(self,robot, path, resolution, handles):
+	def executePath(self, path, resolution, handles):
 		#manip = robot.SetActiveManipulator('arm_torso')
 		print 'path: '+str(len(path))
 		dis_poses = self.discretizePath(path, resolution)
@@ -176,15 +177,15 @@ class MJWBPlanner:
 		all_poses = []
 		all_poses.append(dis_poses)
 		jointnames=['torso_lift_joint','shoulder_pan_joint','shoulder_lift_joint','upperarm_roll_joint','elbow_flex_joint','forearm_roll_joint','wrist_flex_joint','wrist_roll_joint']
-		robot.SetActiveDOFs([robot.GetJoint(name).GetDOFIndex() for name in jointnames],DOFAffine.X|DOFAffine.Y|DOFAffine.RotationAxis)
-		cspec = robot.GetActiveConfigurationSpecification('linear')
-		traj = openravepy.RaveCreateTrajectory(env, '')
+		self.robot.SetActiveDOFs([self.robot.GetJoint(name).GetDOFIndex() for name in jointnames],DOFAffine.X|DOFAffine.Y|DOFAffine.RotationAxis)
+		cspec = self.robot.GetActiveConfigurationSpecification('linear')
+		traj = RaveCreateTrajectory(self.robot.GetEnv(), '')
 		cspec.AddGroup('joint_velocities', dof= 8, interpolation='quadratic')
 		cspec.AddGroup('affine_velocities', dof= 4, interpolation='next')
 		cspec.AddDeltaTimeGroup()
 		traj.Init(cspec)
 		#Creating the first point of the trajectory (the current joint values of the robot)
-		arm_curr = robot.GetDOFValues(manip.GetArmIndices())
+		arm_curr = self.robot.GetDOFValues(self.manip.GetArmIndices())
 		base_curr = np.zeros(3)
 		base_vel = np.zeros(4)
 		arm_vel_cuur = np.zeros(8)
@@ -199,7 +200,7 @@ class MJWBPlanner:
 		curr_time = round(time.time() * 1000)
 
 		for i in range(len(dis_poses)-1):
-			pose, base_pose, arm_vel, finalgoal = executeVelPath(robot, dis_poses[i+1], handles, unitTime = 1.0)
+			pose, base_pose, arm_vel, finalgoal = self.executeVelPath(dis_poses[i+1], handles, unitTime = 1.0)
 			# now creating other waypoints of the trajectory
 			value = []
 			value.extend(finalgoal[ :8])
