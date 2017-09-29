@@ -1,0 +1,57 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>fetchwbp</name>
+  <version>2.0.0</version>
+  <description>
+    Python library for interacting with FETCH through OpenRAVE. 
+  </description>
+  
+  <maintainer email="makhabhi@isu.edu">Abhijit Makhal</maintainer>
+  <author email="makhabhi@isu.edu">Abhijit Makhal</author>
+  
+  <license>BSD</license>
+  <buildtool_depend>catkin</buildtool_depend>
+  <depend>python</depend>
+
+  <exec_depend>actionlib</exec_depend>
+  <exec_depend>actionlib_msgs</exec_depend>
+  <exec_depend>cbirrt2</exec_depend>
+  <exec_depend>or_trajopt</exec_depend>
+  <exec_depend>or_parabolicsmoother</exec_depend>
+  <exec_depend>espeak</exec_depend>
+  <exec_depend>prpy</exec_depend>
+  <exec_depend>ipython</exec_depend>
+  <exec_depend>python-argparse</exec_depend>
+  <exec_depend>python-numpy</exec_depend>
+  <exec_depend>python-yaml</exec_depend>
+  <exec_depend>or_urdf</exec_depend>
+  <exec_depend>or_ompl</exec_depend>
+  <exec_depend>or_sbpl</exec_depend>
+  <exec_depend>openrave</exec_depend>
+  <exec_depend>python-yaml</exec_depend>
+  <exec_depend>tsr</exec_depend>
+
+  <test_depend>actionlib</test_depend>
+  <test_depend>actionlib_msgs</test_depend>
+  <test_depend>cbirrt2</test_depend>
+  <test_depend>or_trajopt</test_depend>
+  <test_depend>or_parabolicsmoother</test_depend>
+  <test_depend>espeak</test_depend>
+  <test_depend>prpy</test_depend>
+  <test_depend>ipython</test_depend>
+  <test_depend>python-argparse</test_depend>
+  <test_depend>python-numpy</test_depend>
+  <test_depend>python-yaml</test_depend>
+  <test_depend>or_urdf</test_depend>
+  <test_depend>or_ompl</test_depend>
+  <test_depend>or_sbpl</test_depend>
+  <test_depend>openrave</test_depend>
+  <test_depend>python-yaml</test_depend>
+  <test_depend>tsr</test_depend>
+
+  <test_depend>python-nose</test_depend>
+  <test_depend>pr_ordata</test_depend>
+  <!--<test_depend>or_pushing</test_depend>--> <!-- in randomized_rearrangement_planning -->
+
+  <doc_depend>doxypy</doc_depend>
+</package>
