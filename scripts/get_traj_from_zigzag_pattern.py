@@ -24,15 +24,15 @@ if __name__ == '__main__':
 	#Moving the arm to a proper pose to start trajectory
 	to_Table = ([0., 0.70503065, -0.81321057,  0.44084394,  1.52903305, -0.37976212,0.92392059,  0.8291418])
 	robot.arm_torso.PlanToConfiguration(to_Table, execute = True) 
-	raw_input("Press enter to continue...")
+	raw_input("Press enter to Create Pattern")
 
 	#Creating pattern and plot the points we need our robot to go through, starting from the current 
 	#pose of the gripper
-	poses = patterns.createZigZagPattern(util.transformToPose(util.getTransform(robot,'gripper_link')),200,3)
+	poses = patterns.createZigZagPattern(util.transformToPose(util.getTransform(robot,'gripper_link')),200,1)
 	handles = []
 	pl = plottingPoints(env,handles)
 	pl.plotPoints(poses, 0.005, color = 'pink')
-	raw_input("Press enter to continue...")
+	raw_input("Press enter to Start Executing Pattern")
 
 	#Obtaining ee pose for each point in pattern
 	stat_trns = util.getTransformBetweenLinks(robot,'wrist_roll_link','gripper_link')
@@ -44,10 +44,11 @@ if __name__ == '__main__':
 
 	#send EE pattern point to the planner
 	planner = MJWBPlanner(robot, handles)
-	all_poses = planner.executePath(new_poses, 500, handles)
+	all_poses = planner.executePath(new_poses, 500, handles, traj_name = 'my_traj.xml')
 
 
-	print 'I am OK'
+	print 'I have planned the trajectory and it is saved'
+	raw_input("Press enter to Exit")
 
 
 

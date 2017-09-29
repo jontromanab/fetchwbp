@@ -4,6 +4,7 @@ from openravepy import *
 from prpy.rave import save_trajectory 
 import util
 from plotting import plottingPoints
+import rospkg
 
 
 
@@ -155,8 +156,6 @@ class MJWBPlanner:
 	On each step, it calculates the joint, affine values from the jacobian and moves the robot
 	to the next point"""
 	def executeVelPath(self, pose, handles, unitTime = 1.0,joint_velocity_limits=None):
-		#self.manip = self.robot.SetActiveManipulator('arm_torso')
-		#basemanip = interfaces.BaseManipulation(robot)
 		with self.robot:
 			Tee = self.manip.GetEndEffectorTransform()
 			TeeBase = self.robot.GetTransform()
@@ -165,23 +164,15 @@ class MJWBPlanner:
 			self.robot.SetActiveDOFs([self.robot.GetJoint(name).GetDOFIndex() for name in jointnames],DOFAffine.X|DOFAffine.Y|DOFAffine.RotationAxis)
 			self.robot.SetAffineTranslationMaxVels([0.5,0.5,0.5])
 			self.robot.SetAffineRotationAxisMaxVels(np.ones(4))
-
 			arm_vel, finalgoal = self.getGoalToExecute(pose, unitTime)
 			self.basemanip.MoveActiveJoints(goal=finalgoal,maxiter=5000,steplength=1,maxtries=2)
-
-
-
-
 			self.pl_.plotPoint(util.transformToPose(TeeBase), 0.01, color = 'yellow')
 			self.pl_.plotPoint(util.transformToPose(Tee_gripper), 0.01, color = 'blue')
 		self.waitrobot()
 		return util.transformToPose(Tee), util.transformToPose(TeeBase), arm_vel, finalgoal
 
-	def executePath(self, path, resolution, handles):
-		#manip = robot.SetActiveManipulator('arm_torso')
-		print 'path: '+str(len(path))
+	def executePath(self, path, resolution, handles, traj_name='whole_body_traj.xml'):
 		dis_poses = self.discretizePath(path, resolution)
-		print 'dis_poses: '+str(len(dis_poses))
 		poses = []
 		base_poses = []
 		all_poses = []
@@ -224,7 +215,10 @@ class MJWBPlanner:
 			traj.Insert(i+1, value)
 			poses.append(pose)
 			base_poses.append(base_pose)
-			save_trajectory(traj,'/home/abhi/Desktop/traj2/whole_body_new_zigzag_timed_traj.xml')
+			rospack = rospkg.RosPack()
+			path = rospack.get_path('fetchwbp')
+			filename = path+'/trajectories/'+traj_name
+			save_trajectory(traj,filename)
 			all_poses.append(poses) 
 			all_poses.append(base_poses) 
 		return all_poses
